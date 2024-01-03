@@ -1,0 +1,42 @@
+.layout {
+  width: 10vw;
+}
+.main_layout {
+  position: sticky;
+  height: 100vh;
+}
+.layout_icons {
+  position: relative;
+  top: 2vh;
+}
+
+.layout_footer {
+  background-color: blue;
+  height: 5vh;
+  width: 100vw;
+  position: sticky;
+  top: 95%;
+  right: 1vw;
+}
+.layout_main {
+  width: 87%;
+  height: 95%;
+  position: absolute;
+  left: 21%;
+  background-color: grey;
+}
+.layout_lists {
+  background-color: blue;
+
+  width: 70%;
+  height: auto;
+
+  display: flex;
+  align-items: flex-start;
+  position: sticky;
+  left: 3vw;
+}
+
+.layout_header {
+  width: 10%;
+}

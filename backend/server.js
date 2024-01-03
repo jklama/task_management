@@ -1,72 +1,71 @@
-const pool = require('./config/config')
 const express = require('express')
-const app = express()
-const port = 3001
+const bodyParser = require('body-parser')
 const cors = require('cors')
+const pgp = require('pg-promise')()
+const app = express()
+
+const db = pgp({
+  connectionString: 'postgres://postgres:Iamgamer009@localhost:5432/newProject',
+})
+
 app.use(cors())
-app.use(express.json())
+app.use(bodyParser.json())
 
-app.get('/api/users', async (req, res) => {
-  const { rows } = await pool.query('SELECT * FROM users')
-  res.json(rows)
-})
+// Register a new user
 
-app.post('/api/users', async (req, res) => {
-  const { username, email } = req.body
-  if (!username || !email) {
-    return res.status(400).json({ error: 'Username and email are required' })
-  }
-
+app.post('/register', async (req, res) => {
+  const { username, password, isAdmin } = req.body
   try {
-    const result = await pool.query(
-      'INSERT INTO users (username, email) VALUES ($1, $2) RETURNING *',
-      [username, email]
+    await db.none(
+      'INSERT INTO users(username, password, isAdmin) VALUES($1, $2, $3)',
+      [username, password, isAdmin]
     )
-    res.status(201).json(result.rows[0])
+    res.json({ success: true, message: 'User registered successfully' })
   } catch (error) {
-    console.error('Error creating user:', error)
-    res.status(500).json({ error: 'Internal Server Error' })
+    res.json({ success: false, message: 'Registration failed' })
   }
 })
-// Update a user by ID
-app.put('/api/users/:id', async (req, res) => {
+// Login
+app.post('/login', async (req, res) => {
+  const { username, password, isAdmin } = req.body
+  try {
+    const user = await db.one(
+      'SELECT * FROM users WHERE username = $1 AND password = $2',
+      [username, password, isAdmin]
+    )
+    res.json({ success: true, message: 'Login successful', user })
+  } catch (error) {
+    res.json({ success: false, message: 'Invalid credentials' })
+  }
+})
+
+// Delete user
+app.delete('/delete/:id', async (req, res) => {
   const userId = req.params.id
-  const { username, email } = req.body
-
+  const { isAdmin } = req.body // Admin status should be checked from the authentication token or session
   try {
-    const result = await pool.query(
-      'UPDATE users SET username = $1, email = $2 WHERE id = $3 RETURNING *',
-      [username, email, userId]
-    )
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' })
+    if (isAdmin) {
+      await db.none('DELETE FROM users WHERE id = $1', userId)
+      res.json({ success: true, message: 'User deleted successfully' })
+    } else {
+      res.status(403).json({ success: false, message: 'Permission denied' })
     }
-
-    res.json(result.rows[0])
   } catch (error) {
-    console.error('Error updating user:', error)
-    res.status(500).json({ error: 'Internal Server Error' })
+    res.json({ success: false, message: 'Deletion failed' })
   }
 })
 
-app.delete('/api/users/:id', async (req, res) => {
-  const userId = req.params.id
-
+//Get users
+app.get('/users', async (req, res) => {
   try {
-    const result = await pool.query(
-      'DELETE FROM users WHERE id = $1 RETURNING *',
-      [userId]
-    )
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' })
-    }
-
-    res.json({ message: 'User deleted successfully' })
+    const users = await db.any('SELECT id, username, isAdmin FROM users')
+    res.json(users)
   } catch (error) {
-    console.error('Error deleting user:', error)
-    res.status(500).json({ error: 'Internal Server Error' })
+    res.json({ success: false, message: 'Failed to fetch users' })
   }
 })
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`)
+
+const PORT = 5000
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`)
 })
